@@ -81,6 +81,19 @@ const tests=`
   setFold(false);
   assert(G.S.size===5478,'unfold restores full graph');
   assert(typeof goSketch==='undefined','sketch button fully removed');
+  // fate tint batching: every node group carries a minimax value
+  assert(scene.nodes.every(g=>[1,0,-1].includes(g.val)),'node groups carry fate values');
+  // unified players: watch mode reaches an ending, interrupt restores control
+  goHome(); setPlayers('X','random'); setPlayers('O','bot');
+  let wguard=0;
+  while(!focus.win&&wguard++<20){ agentMove(players[focus.depth%2===0?'X':'O']); }
+  assert(focus.win&&focus.win!=='X','bot O never loses in watch mode, ended '+focus.win);
+  humanInterrupt();
+  assert(players.X==='you'&&players.O==='you','interrupt hands both sides back');
+  // preview text for a winning move
+  goToCells([0,3,1,4]);
+  const pe=childEdgeForCell(2);
+  assert(previewText(2,pe.to).includes('wins'),'preview announces the win');
   // tour
   tourGo(1);
   assert(focus===G.root&&tourIdx===0,'tour stop 1 = empty board');
@@ -90,12 +103,11 @@ const tests=`
   assert(focus.depth===1,'tour back to stop 2');
   for(let i=0;i<4;i++)tourGo(1);
   assert(focus.win==='X','tour final stop is a finished X win, got '+focus.win);
-  // autoplay: run from root until a terminal
-  goHome(); auto.on=true; auto.next=0;
+  // the random agent runs a game to an ending
+  goHome();
   let guard=0;
-  while(auto.on&&guard++<20){ autoStep(1000+guard*2); }
-  assert(focus.win,'autoplay reached an ending: '+focus.key);
-  assert(!auto.on,'autoplay stopped itself at the ending');
+  while(!focus.win&&guard++<20){ randomMove(); }
+  assert(focus.win,'random play reached an ending: '+focus.key);
   // goToCells + recenter
   goToCells([4,0,8]);
   assert(focus.depth===3&&trail.length===3,'goToCells lands at move 3');
