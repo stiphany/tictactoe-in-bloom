@@ -1,8 +1,8 @@
 # Tic-Tac-Toe in Bloom 🌸
 
-Every legal game of tic-tac-toe — all **255,168** of them — grown into one interactive dahlia-mandala. The empty board sits at the center as a golden lattice; each ring outward holds every position reachable in that many moves, spaced evenly like rows of petals. Blue stems are X's moves, pink are O's, and where two move orders arrive at the same position the strands fuse lilac. A golden vine ramps from amber to champagne toward the fastest possible finish.
+Every legal game of tic-tac-toe, all **255,168** of them, grown into one interactive dahlia mandala. The empty board sits at the center as a golden lattice; each ring outward holds every position reachable in that many moves, spaced evenly like rows of petals. Blue stems are X's moves, pink are O's, and where two move orders arrive at the same position the strands fuse lilac. A golden vine ramps from amber to champagne toward the fastest possible finish.
 
-**Live version:** https://claude.ai/code/artifact/677a495b-4084-495c-9d7b-bb34164ac75b
+**Live version:** https://stiphany.com/tictactoe-in-bloom/
 
 No build, no dependencies: it is one self-contained `index.html`. Open it in any browser.
 
@@ -20,11 +20,11 @@ Under perfect play the game is a draw in 9 moves; the built-in bot plays that mi
 ## Interacting
 
 - **Hover** any blossom for its board and live odds; **click** to replant the flower at that position
-- **Play on the board** in the side panel — hovering a square lights up its branch
-- **🤖 opponent** — let the perfect bot play O (or X, it opens)
-- **✿ let it play** — watch a random game unfold petal by petal
-- **Tour** ◀ ▶ (or arrow keys) — six curated stops through the garden
-- **Fold symmetries** — collapse the 5,478 positions to 765 canonical blossoms
+- **Play on the board** in the side panel; hovering a square lights up its branch
+- **🤖 opponent**: let the perfect bot play O (or X, it opens)
+- **✿ let it play**: watch a random game unfold petal by petal
+- **Tour** ◀ ▶ (or arrow keys): six curated stops through the garden
+- **Fold symmetries**: collapse the 5,478 positions to 765 canonical blossoms
 - Scroll to zoom, drag to pan, `c` or double-click to recenter, `esc` to step back a move
 - The URL hash tracks your moves (`#0314`), so positions are shareable links
 
