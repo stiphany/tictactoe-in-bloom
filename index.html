@@ -57,7 +57,6 @@
     background:linear-gradient(100deg,#ffd68a,#ff8fd8 55%,#cda0ff); -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   .sub{color:var(--muted); font-size:13px; margin:8px 0 10px}
-  #global{color:var(--faint); font-size:11.5px; letter-spacing:.03em; margin-bottom:16px; font-variant-numeric:tabular-nums}
 
   #boardWrap{display:flex; flex-direction:column; align-items:center; gap:10px; margin:6px 0 4px}
   #board{display:grid; grid-template-columns:repeat(3,var(--cell)); gap:7px}
@@ -93,9 +92,10 @@
   .btns button:hover{background:rgba(255,255,255,.14)}
   .btns button:disabled{opacity:.35; cursor:default}
 
-  #playersRow{display:flex; align-items:center; gap:6px; margin:0 0 12px; flex-wrap:wrap}
-  .pLab{font-weight:800; font-size:13px; margin-right:1px}
-  .pseg{display:inline-flex; gap:4px; margin-right:8px}
+  #playersRow{display:grid; grid-template-columns:auto 1fr; gap:7px 10px; align-items:center; margin:0 0 12px}
+  .pLab{font-weight:800; font-size:13px; text-align:center}
+  .pseg{display:flex; gap:5px}
+  .pseg .seg{flex:1; text-align:center}
   .seg{font:inherit; font-size:11px; color:var(--muted); background:rgba(255,255,255,.05);
     border:1px solid var(--line); border-radius:999px; padding:4px 10px; cursor:pointer}
   .seg:hover{background:rgba(255,255,255,.12)}
@@ -125,10 +125,21 @@
   .swdot{flex:none; width:26px; display:flex; justify-content:center; gap:3px}
   .swdot i{width:9px; height:9px; border-radius:50%}
 
-  details{margin-top:16px; color:var(--muted); font-size:12.5px}
-  summary{cursor:pointer; color:var(--ink); font-weight:600; font-size:13px}
-  details p{margin:8px 0; max-width:60ch}
+  details{margin-top:16px; color:var(--muted); font-size:12.5px;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:15px; overflow:hidden}
+  summary{list-style:none; cursor:pointer; color:var(--ink); font-weight:600; font-size:13px;
+    padding:11px 15px; display:flex; align-items:center; justify-content:space-between}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:'\25B8'; color:var(--gold); font-size:12px; transition:transform .18s}
+  details[open] summary::after{transform:rotate(90deg)}
+  summary:hover{background:rgba(255,255,255,.05)}
+  .dbody{padding:0 15px 15px; display:flex; flex-direction:column; gap:5px}
+  .dhead{margin-top:9px; color:var(--gold); font-size:10px; letter-spacing:.1em; text-transform:uppercase}
+  details p{margin:2px 0; max-width:60ch}
   details b{color:var(--ink)}
+  .dbody .legend{margin:2px 0}
+  .dbody #stats{margin:0}
+  #global{color:var(--faint); font-size:11.5px; letter-spacing:.03em; font-variant-numeric:tabular-nums}
   #withlove{margin-top:20px; text-align:center; color:var(--faint); font-size:11px; letter-spacing:.07em}
 
   @media (max-width:760px){
@@ -150,12 +161,11 @@
     .btns{order:3}
     #playersRow{order:4}
     #tour{order:5}
-    #stats{order:6; margin:6px 0 10px}
-    .tog{order:7}
+    #panel>.tog{order:6}
+    details{order:7}
     h1{order:8; margin-top:14px}
     .sub{order:9}
-    details{order:10}
-    #withlove{order:11}
+    #withlove{order:10}
   }
   /* ---------- first-visit welcome ---------- */
   #welcome{position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
@@ -202,9 +212,9 @@
     </div>
     <div id="trail"></div>
     <div class="btns">
-      <button id="upBtn" title="undo one move">&#8630; back</button>
-      <button id="fwdBtn" title="redo the move you stepped back from">&#8631; forward</button>
-      <button id="homeBtn" title="return to the empty board">&#8962; empty</button>
+      <button id="upBtn" title="undo one move">&#8634; back</button>
+      <button id="fwdBtn" title="redo the move you stepped back from">&#8635; forward</button>
+      <button id="homeBtn" title="return to the empty board">&#10048; reset</button>
     </div>
     <div id="playersRow">
       <span class="pLab mx">X</span>
@@ -225,26 +235,34 @@
       <div id="tourCap"><span id="tourN">tour</span><span id="tourText">six stops through the garden; use the arrows</span></div>
       <button id="tourNext" aria-label="next tour stop">&#9654;</button>
     </div>
-    <label class="tog"><input type="checkbox" id="tintChk"> tint blossoms by perfect-play fate</label>
-    <label class="tog"><input type="checkbox" id="foldChk"> fold symmetries (765 blossoms)</label>
-    <label class="tog"><input type="checkbox" id="webChk" checked> lilac transposition web</label>
-    <div id="stats"></div>
-    <details>
+    <label class="tog"><input type="checkbox" id="tintChk"> reveal each blossom&rsquo;s fate</label>
+    <details id="learn">
       <summary>how to read the flower</summary>
+      <div class="dbody">
+      <div class="dhead">this position</div>
+      <div id="stats"></div>
+      <div class="dhead">view</div>
+      <label class="tog"><input type="checkbox" id="foldChk"> fold symmetries (765 blossoms)</label>
+      <label class="tog"><input type="checkbox" id="webChk" checked> lilac transposition web</label>
+      <div class="dhead">legend</div>
       <div class="legend">
         <div class="row"><span class="sw" style="background:var(--x)"></span> X plants a mark</div>
         <div class="row"><span class="sw" style="background:var(--o)"></span> O plants a mark</div>
         <div class="row"><span class="sw" style="background:var(--web)"></span> transposition: two move orders, same position</div>
         <div class="row"><span class="sw" style="background:var(--gold)"></span> the golden vine: one fastest finish (blooms after move&nbsp;1)</div>
         <div class="row"><span class="swdot"><i style="background:#ffd88c"></i><i style="background:#ff9478"></i><i style="background:#ff5c6e"></i></span> positions, sunset-tinted by move number</div>
-        <div class="row"><span class="swdot"><i style="background:var(--gold)"></i><i style="background:#b2a8dc"></i><i style="background:#ff6ea0"></i></span> fate tint: gold X wins &middot; lavender draw &middot; rose O wins</div>
+        <div class="row"><span class="swdot"><i style="background:#ffc450"></i><i style="background:#9694cd"></i><i style="background:#ff5a96"></i></span> fate: gold X wins &middot; lavender draw &middot; rose O wins</div>
         <div class="row"><span class="swdot"><i style="background:var(--gold)"></i><i style="background:var(--o)"></i><i style="background:#b7a3e6"></i></span> endings: gold&nbsp;X&nbsp;&middot;&nbsp;pink&nbsp;O&nbsp;&middot;&nbsp;lavender&nbsp;draw</div>
       </div>
+      <div class="dhead">the numbers</div>
       <div id="global"></div>
+      <div class="dhead">the idea</div>
       <p>The center is <b>S&#8320;</b>, the empty grid. Nine stems leave it (X&rsquo;s first move), each child has eight replies, then seven, and so on, but branches die early wherever someone completes three in a row, and many branches <b>merge</b>: X&nbsp;a1 then X&nbsp;b2 lands on the same position whether O answered in between at b1 or c3. Those merges are the lilac strands, the &ldquo;two ways to get to the same state&rdquo; from your notes.</p>
       <p>Each ring holds every position reachable in the same number of moves, its blossoms spaced evenly around the circle like a row of dahlia petals, with alternate rows offset half a step. Ring spacing shrinks as the game goes on, so a move early in the game is a <b>long stem</b> and a move late in the game is a short petal. That makes speed visible: the fastest wins (X in 5 moves) sit close to the heart of the flower at the end of long, sparse stems, crowned with little gold rays, while long grinding games gather as fine lace on the rim.</p>
       <p>Folding the 8 symmetries (4 rotations &times; mirrors) treats boards that are the same flower viewed from a different angle as one blossom: 5,478 positions collapse to 765, and the count of complete games, weighted by how many raw boards each blossom stands for, still totals 255,168.</p>
-      <p>Shortcuts: scroll to zoom, drag to pan, click a blossom to replant, 1&ndash;9 plays a square, esc steps back, c recenters, and the arrow keys walk the tour.</p>
+      <div class="dhead">shortcuts</div>
+      <p>Scroll to zoom, drag to pan, click a blossom to replant, 1&ndash;9 plays a square, esc steps back, c recenters, and the arrow keys walk the tour.</p>
+      </div>
     </details>
     <div id="withlove">grown with love, from S&#8320; to S&#8329; <span style="color:var(--o)">&hearts;</span></div>
   </aside>
@@ -401,7 +419,7 @@ function nodeColor(gd){
   return [A[0]+(B[0]-A[0])*t|0,A[1]+(B[1]-A[1])*t|0,A[2]+(B[2]-A[2])*t|0];
 }
 /* perfect-play fate: gold when X wins with best play, lavender when drawn, rose when O wins */
-const valColor=v=>v===1?[255,206,110]:v===0?[178,168,220]:[255,110,160];
+const valColor=v=>v===1?[255,196,80]:v===0?[150,148,205]:[255,90,150];
 
 /* ================= state ================= */
 let G=buildGraph(false);
@@ -591,17 +609,22 @@ function buildScene(){
   for(let d=1;d<=LY.maxD;d++){
     guides.moveTo(LY.cum[d],0); guides.arc(0,0,LY.cum[d],0,TAU);
   }
-  const petals={X:new Path2D(),O:new Path2D()};
+  const petals=new Map();
   for(const o of LY.order){
     if(o.par){
       const mark=o.par.n.depth%2===0?'X':'O';
+      /* fate (child minimax value) rides in every batch key so the tint
+         toggle repaints edges and petals too, with no rebuild */
       if(o.d===1){ /* the handful of edges off the center: closed petal silhouettes */
-        petalPath(petals[mark],o.par,o);
+        const pk=mark+'/'+o.n.val;
+        let pg=petals.get(pk);
+        if(!pg){pg={mark,val:o.n.val,path:new Path2D()};petals.set(pk,pg);}
+        petalPath(pg.path,o.par,o);
       }else{
         const bucket=Math.min(o.pedge.mult,4);
-        const key=mark+o.par.d+':'+bucket;
+        const key=mark+o.par.d+':'+bucket+':'+o.n.val;
         let g=tree.get(key);
-        if(!g){g={path:new Path2D(),mark,d:o.par.d,bucket};tree.set(key,g);}
+        if(!g){g={path:new Path2D(),mark,d:o.par.d,bucket,val:o.n.val};tree.set(key,g);}
         const e=edgeGeom(o.par,o);
         g.path.moveTo(e.x1,e.y1); g.path.quadraticCurveTo(e.cx,e.cy,e.x2,e.y2);
       }
@@ -670,7 +693,7 @@ function buildScene(){
   const heartGlow=new Path2D();
   const hr=LY.maxD>=1?LY.cum[1]*0.55:r0*3;
   heartGlow.moveTo(hr,0); heartGlow.arc(0,0,hr,0,TAU);
-  scene={tree:[...tree.values()].sort((a,b)=>b.d-a.d),web,halos,nodes:[...nodes.values()],rays,gold,guides,petals,lattice,coreGlow,heartGlow};
+  scene={tree:[...tree.values()].sort((a,b)=>b.d-a.d),web,halos,nodes:[...nodes.values()],rays,gold,guides,petals:[...petals.values()],lattice,coreGlow,heartGlow};
 }
 
 function buildGrid(){
@@ -722,44 +745,48 @@ function draw(t){
   ctx.strokeStyle='rgba(255,255,255,'+(fold?0.05:0.03)+')';
   ctx.lineWidth=1;
   ctx.stroke(scene.guides);
-  /* luminous ring beds between petal rows give the mandala body */
+  /* luminous ring beds between petal rows give the mandala body;
+     they hush in fate mode so the tint carries the story */
+  const bedF=tintFate?0.4:1, edgeCol=g=>tintFate?valColor(g.val):(g.mark==='X'?COL.X:COL.O);
   for(let d=1;d<=LY.maxD;d++){
     const gap=LY.cum[d]-LY.cum[d-1];
-    ctx.strokeStyle=rgba(nodeColor(Math.min(9,d+focus.depth)),(fold?0.035:0.02)*sh(d));
+    ctx.strokeStyle=rgba(nodeColor(Math.min(9,d+focus.depth)),(fold?0.035:0.02)*bedF*sh(d));
     ctx.lineWidth=gap*0.8;
     ctx.beginPath(); ctx.arc(0,0,Math.max(1,LY.cum[d]-gap*0.4),0,TAU); ctx.stroke();
   }
-  ctx.fillStyle=rgba(COL.gold,0.045*sh(0)); ctx.fill(scene.heartGlow);
+  ctx.fillStyle=rgba(COL.gold,0.045*bedF*sh(0)); ctx.fill(scene.heartGlow);
   if(showWeb){
-    ctx.strokeStyle=rgba(COL.web,fold?0.12:0.045);
+    ctx.strokeStyle=rgba(COL.web,(fold?0.12:0.045)*(tintFate?0.55:1));
     ctx.lineWidth=fold?2.4:1.15;
     ctx.stroke(scene.web);
   }
-  for(const m of ['X','O']){
-    ctx.fillStyle=rgba(COL[m],0.09*sh(0.5)); ctx.fill(scene.petals[m]);
-    ctx.strokeStyle=rgba(COL[m],0.07*sh(0.5));
+  for(const pg of scene.petals){
+    const col=tintFate?valColor(pg.val):COL[pg.mark];
+    ctx.fillStyle=rgba(col,0.09*sh(0.5)); ctx.fill(pg.path);
+    ctx.strokeStyle=rgba(col,0.07*sh(0.5));
     ctx.lineWidth=widthD(0)*1.1;
-    ctx.stroke(scene.petals[m]);
-    ctx.strokeStyle=rgba(COL[m],(alphaD(0)+0.18)*sh(0.5));
+    ctx.stroke(pg.path);
+    ctx.strokeStyle=rgba(col,(alphaD(0)+0.18)*sh(0.5));
     ctx.lineWidth=widthD(0)*0.35+1;
-    ctx.stroke(scene.petals[m]);
+    ctx.stroke(pg.path);
   }
   /* soft halo underlayer on the inner stems: layered-glass depth */
   for(const g of scene.tree){
     if(g.d>3)continue;
-    ctx.strokeStyle=rgba(g.mark==='X'?COL.X:COL.O,alphaD(g.d)*0.22*sh(g.d));
+    ctx.strokeStyle=rgba(edgeCol(g),alphaD(g.d)*0.22*sh(g.d));
     ctx.lineWidth=widthD(g.d)*2.8;
     ctx.stroke(g.path);
   }
   for(const g of scene.tree){
-    ctx.strokeStyle=rgba(g.mark==='X'?COL.X:COL.O,alphaD(g.d)*sh(g.d));
+    ctx.strokeStyle=rgba(edgeCol(g),alphaD(g.d)*(tintFate?1.25:1)*sh(g.d));
     ctx.lineWidth=widthD(g.d)*(0.7+0.3*Math.sqrt(g.bucket));
     ctx.stroke(g.path);
   }
   for(const k of ['X','O','D']){ctx.fillStyle=rgba(COL['halo'+k],0.16*sh(6));ctx.fill(scene.halos[k]);}
   for(const g of scene.nodes){
     const col=tintFate?valColor(g.val):nodeColor(g.gd);
-    ctx.fillStyle=rgba(col,Math.max(0.4,0.92-0.06*g.gd)*sh(g.gd-focus.depth));
+    const a=tintFate?0.92:Math.max(0.4,0.92-0.06*g.gd);
+    ctx.fillStyle=rgba(col,a*sh(g.gd-focus.depth));
     ctx.fill(g.path);
   }
   /* golden vine: nothing travels; the path ramps from deep amber at your
