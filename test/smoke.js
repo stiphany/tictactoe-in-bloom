@@ -11,6 +11,7 @@ function makeEl(){
     offsetWidth:100, offsetHeight:80, clientWidth:1200, clientHeight:800,
     hidden:false, disabled:false,
     getContext:function(){return ctx},
+    setAttribute(){}, getAttribute(){return null}, click(){},
   };
   Object.defineProperty(el,'innerHTML',{get(){return this._html},set(v){this._html=v;this.children=[]}});
   Object.defineProperty(el,'textContent',{get(){return this._text},set(v){this._text=v}});
@@ -130,6 +131,15 @@ const tests=`
     if(focus.win==='X')botWinsX++;
   }
   console.log('bot ok: as O won '+botWinsO+'/60, as X won '+botWinsX+'/60, lost 0');
+  // redo stack
+  goToCells([4,0]);
+  goUp();
+  assert(focus.depth===1&&redoStack.length===1,'goUp feeds redo');
+  goForward();
+  assert(focus.depth===2&&trail.length===2&&redoStack.length===0,'goForward replays the move');
+  goUp(); goToCells([0]);
+  assert(redoStack.length===0,'fresh navigation clears redo');
+  console.log('redo ok');
   goHome();
   console.log('SMOKE TEST PASSED');
 })();
