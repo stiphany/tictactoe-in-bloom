@@ -1,0 +1,1078 @@
+<title>Tic-Tac-Toe in Bloom</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg0:#241238; --bg1:#150a24; --bg2:#0d0618;
+    --ink:#f5ecff; --muted:#b9a6d9; --faint:#8672ad;
+    --x:#8da2ff; --o:#ff8ac4; --web:#be96ff; --gold:#ffd178; --coral:#ff7896;
+    --glass:rgba(28,15,48,.62); --line:rgba(255,255,255,.09);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  #app{
+    position:fixed; inset:0; display:flex;
+    background:
+      radial-gradient(90% 65% at 78% 10%, rgba(255,118,178,.10), transparent 62%),
+      radial-gradient(85% 80% at 12% 88%, rgba(92,222,214,.09), transparent 60%),
+      radial-gradient(60% 55% at 50% 45%, rgba(150,120,255,.07), transparent 65%),
+      radial-gradient(130% 110% at 32% 18%, var(--bg0) 0%, var(--bg1) 52%, var(--bg2) 100%);
+    color:var(--ink);
+    font-family:ui-rounded,"SF Pro Rounded",-apple-system,"Segoe UI",system-ui,sans-serif;
+    font-size:14px; line-height:1.45;
+  }
+  #stage{position:relative; flex:1; min-width:0}
+  #bg,#cv{position:absolute; inset:0; width:100%; height:100%; display:block}
+  #cv{cursor:crosshair}
+  #cv.grabbing{cursor:grabbing}
+  #hint{position:absolute; left:14px; bottom:12px; color:var(--faint); font-size:12px; pointer-events:none; letter-spacing:.02em}
+
+  /* ---------- tooltip ---------- */
+  #tip{
+    position:absolute; z-index:5; pointer-events:none; max-width:230px;
+    background:rgba(24,12,42,.9); border:1px solid var(--line); border-radius:14px;
+    padding:10px 12px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    box-shadow:0 8px 30px rgba(0,0,0,.45);
+  }
+  #tip .mini{display:grid; grid-template-columns:repeat(3,20px); gap:2px; margin-bottom:8px}
+  #tip .mini div{
+    width:20px; height:20px; border-radius:5px; background:rgba(255,255,255,.06);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;
+  }
+  #tip .tline{color:var(--muted); font-size:12px; margin-top:3px}
+  #tip .tline b{color:var(--ink)}
+  #tip .cta{color:var(--gold); font-size:11px; margin-top:6px; letter-spacing:.04em}
+
+  /* ---------- panel ---------- */
+  #panel{
+    width:362px; flex:none; overflow-y:auto; padding:22px 22px 28px;
+    background:var(--glass); border-left:1px solid var(--line);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  }
+  h1{font-size:25px; margin:0; font-weight:800; letter-spacing:.01em; text-wrap:balance}
+  h1 em{
+    font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:500; font-style:italic;
+    background:linear-gradient(100deg,#ffd68a,#ff8fd8 55%,#cda0ff); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub{color:var(--muted); font-size:13px; margin:8px 0 10px}
+  #global{color:var(--faint); font-size:11.5px; letter-spacing:.03em; margin-bottom:16px; font-variant-numeric:tabular-nums}
+
+  #boardWrap{display:flex; flex-direction:column; align-items:center; gap:10px; margin:6px 0 4px}
+  #board{display:grid; grid-template-columns:repeat(3,62px); gap:7px}
+  #board .cell{
+    width:62px; height:62px; border-radius:14px; border:1px solid var(--line);
+    background:rgba(255,255,255,.045);
+    display:flex; align-items:center; justify-content:center;
+    font-size:30px; font-weight:800; user-select:none; -webkit-user-select:none;
+    transition:background .12s, transform .12s;
+  }
+  #board .cell.open{cursor:pointer}
+  #board .cell.open:hover{background:rgba(255,255,255,.12); transform:scale(1.05)}
+  #board .cell.open:hover::after{content:attr(data-ghost); opacity:.4}
+  .mx{color:var(--x)} .mo{color:var(--o)}
+  #board .cell.winline{background:rgba(255,214,138,.16); border-color:rgba(255,214,138,.55); box-shadow:0 0 18px rgba(255,214,138,.25)}
+  #turnline{color:var(--muted); font-size:12.5px; letter-spacing:.05em}
+  #banner{display:none; text-align:center; font-weight:800; font-size:15px; margin-top:2px}
+
+  #trail{display:flex; flex-wrap:wrap; gap:5px; margin:14px 0 10px}
+  .chip{
+    font:inherit; font-size:11.5px; color:var(--ink); background:rgba(255,255,255,.07);
+    border:1px solid var(--line); border-radius:999px; padding:3px 9px; cursor:pointer;
+  }
+  .chip:hover{background:rgba(255,255,255,.15)}
+  .chip:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+
+  .btns{display:flex; gap:7px; margin:4px 0 14px}
+  .btns button{
+    flex:1; font:inherit; font-size:12px; color:var(--ink); cursor:pointer;
+    background:rgba(255,255,255,.07); border:1px solid var(--line); border-radius:11px; padding:7px 6px;
+  }
+  .btns button:hover{background:rgba(255,255,255,.14)}
+  .btns button:disabled{opacity:.35; cursor:default}
+
+  #botRow{display:flex; align-items:center; gap:6px; margin:0 0 12px; flex-wrap:wrap}
+  #botLab{color:var(--muted); font-size:12px; margin-right:2px}
+  .seg{font:inherit; font-size:11px; color:var(--muted); background:rgba(255,255,255,.05);
+    border:1px solid var(--line); border-radius:999px; padding:4px 10px; cursor:pointer}
+  .seg:hover{background:rgba(255,255,255,.12)}
+  .seg.on{color:var(--ink); background:rgba(190,150,255,.18); border-color:rgba(190,150,255,.5)}
+  #tour{display:flex; align-items:center; gap:9px; margin:2px 0 14px;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:13px; padding:8px 10px}
+  #tour button{font:inherit; font-size:11px; color:var(--gold); background:none; border:none; cursor:pointer; padding:4px}
+  #tour button:hover{color:var(--ink)}
+  #tourCap{flex:1; min-width:0}
+  #tourN{display:block; color:var(--gold); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase}
+  #tourText{color:var(--muted); font-size:12px}
+  .tog{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12.5px; margin:5px 0; cursor:pointer}
+  .tog input{accent-color:#cda0ff}
+
+  #stats{margin:16px 0 6px}
+  .statline{font-size:13px; margin:5px 0}
+  .statline b{font-variant-numeric:tabular-nums}
+  .goldline{color:var(--gold); font-size:12.5px; margin-top:7px}
+  #bar{display:flex; height:9px; border-radius:5px; overflow:hidden; gap:2px; margin:9px 0 5px; background:rgba(255,255,255,.04)}
+  #bar div{height:100%}
+  #barX{background:var(--x)} #barO{background:var(--o)} #barD{background:#b0a6d8}
+  #barcap{color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums}
+
+  .legend{margin:18px 0 4px; display:flex; flex-direction:column; gap:6px}
+  .legend .row{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px}
+  .sw{flex:none; width:26px; height:3px; border-radius:2px}
+  .swdot{flex:none; width:26px; display:flex; justify-content:center; gap:3px}
+  .swdot i{width:9px; height:9px; border-radius:50%}
+
+  details{margin-top:16px; color:var(--muted); font-size:12.5px}
+  summary{cursor:pointer; color:var(--ink); font-weight:600; font-size:13px}
+  details p{margin:8px 0; max-width:60ch}
+  details b{color:var(--ink)}
+  #withlove{margin-top:20px; text-align:center; color:var(--faint); font-size:11px; letter-spacing:.07em}
+
+  @media (max-width:760px){
+    #app{flex-direction:column}
+    #panel{width:auto; max-height:48%; border-left:none; border-top:1px solid var(--line)}
+  }
+  @media (prefers-reduced-motion:reduce){ #board .cell{transition:none} }
+</style>
+
+<div id="app">
+  <div id="stage">
+    <canvas id="bg"></canvas>
+    <canvas id="cv"></canvas>
+    <div id="tip" hidden></div>
+    <div id="hint">scroll to zoom · drag to pan · click a blossom to replant · esc = back · c = recenter · &#8592;/&#8594; = tour</div>
+  </div>
+  <aside id="panel">
+    <h1>Tic-Tac-Toe <em>in bloom</em></h1>
+    <p class="sub">Every legal game grows out of the empty board at the center. Blue stems are X&rsquo;s moves, pink are O&rsquo;s, and where two move orders arrive at the same position the strands fuse lilac. The golden vine traces one fastest possible finish. Click any blossom to replant the flower there, or just play on the board.</p>
+    <div id="global"></div>
+    <div id="boardWrap">
+      <div id="board"></div>
+      <div id="turnline"></div>
+      <div id="banner"></div>
+    </div>
+    <div id="trail"></div>
+    <div class="btns">
+      <button id="upBtn">&#8593; back a move</button>
+      <button id="homeBtn">&#8962; empty board</button>
+      <button id="playBtn">&#10047; let it play</button>
+    </div>
+    <div id="botRow">
+      <span id="botLab">&#129302; opponent</span>
+      <button id="botOff" class="seg on">off</button>
+      <button id="botO" class="seg">bot plays O</button>
+      <button id="botX" class="seg">bot plays X</button>
+    </div>
+    <div id="tour">
+      <button id="tourPrev" aria-label="previous tour stop">&#9664;</button>
+      <div id="tourCap"><span id="tourN">tour</span><span id="tourText">six stops through the garden &mdash; use the arrows</span></div>
+      <button id="tourNext" aria-label="next tour stop">&#9654;</button>
+    </div>
+    <label class="tog"><input type="checkbox" id="foldChk"> fold the 8 symmetries (5,478 &rarr; 765 positions)</label>
+    <label class="tog"><input type="checkbox" id="webChk" checked> show the lilac transposition web</label>
+    <div id="stats"></div>
+    <div class="legend">
+      <div class="row"><span class="sw" style="background:var(--x)"></span> X plants a mark</div>
+      <div class="row"><span class="sw" style="background:var(--o)"></span> O plants a mark</div>
+      <div class="row"><span class="sw" style="background:var(--web)"></span> transposition &mdash; two move orders, same position</div>
+      <div class="row"><span class="sw" style="background:var(--gold)"></span> the golden vine: one fastest finish (blooms after move&nbsp;1)</div>
+      <div class="row"><span class="swdot"><i style="background:#ffd88c"></i><i style="background:#ff9478"></i><i style="background:#ff5c6e"></i></span> positions, sunset-tinted by move number</div>
+      <div class="row"><span class="swdot"><i style="background:var(--gold)"></i><i style="background:var(--o)"></i><i style="background:#b7a3e6"></i></span> endings: gold&nbsp;X&nbsp;&middot;&nbsp;pink&nbsp;O&nbsp;&middot;&nbsp;lavender&nbsp;draw</div>
+    </div>
+    <details>
+      <summary>how to read the flower</summary>
+      <p>The center is <b>S&#8320;</b>, the empty grid. Nine stems leave it (X&rsquo;s first move), each child has eight replies, then seven, and so on &mdash; but branches die early wherever someone completes three in a row, and many branches <b>merge</b>: X&nbsp;a1 then X&nbsp;b2 lands on the same position whether O answered in between at b1 or c3. Those merges are the lilac strands &mdash; the &ldquo;two ways to get to the same state&rdquo; from your notes.</p>
+      <p>Each ring holds every position reachable in the same number of moves, its blossoms spaced evenly around the circle like a row of dahlia petals, with alternate rows offset half a step. Ring spacing shrinks as the game goes on, so a move early in the game is a <b>long stem</b> and a move late in the game is a short petal. That makes speed visible: the fastest wins (X in 5 moves) sit close to the heart of the flower at the end of long, sparse stems, crowned with little gold rays, while long grinding games gather as fine lace on the rim.</p>
+      <p>Folding the 8 symmetries (4 rotations &times; mirrors) treats boards that are the same flower viewed from a different angle as one blossom: 5,478 positions collapse to 765, and the count of complete games, weighted by how many raw boards each blossom stands for, still totals 255,168.</p>
+    </details>
+    <div id="withlove">grown with love, from S&#8320; to S&#8329; <span style="color:var(--o)">&hearts;</span></div>
+  </aside>
+</div>
+
+<script>
+'use strict';
+/* ================= game graph ================= */
+const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const SYMS=[
+  [0,1,2,3,4,5,6,7,8],[6,3,0,7,4,1,8,5,2],[8,7,6,5,4,3,2,1,0],[2,5,8,1,4,7,0,3,6],
+  [2,1,0,5,4,3,8,7,6],[0,3,6,1,4,7,2,5,8],[6,7,8,3,4,5,0,1,2],[8,5,2,7,4,1,6,3,0]
+];
+function winLine(b){for(const L of LINES){const c=b[L[0]];if(c!=='.'&&c===b[L[1]]&&c===b[L[2]])return L;}return null;}
+function canon(b){let best=null;for(const p of SYMS){let s='';for(let i=0;i<9;i++)s+=b[p[i]];if(best===null||s<best)best=s;}return best;}
+
+function buildGraph(foldSym){
+  const norm=foldSym?canon:(s)=>s;
+  const rootKey=norm('.........');
+  const S=new Map();
+  const mk=(key,depth)=>({key,depth,win:null,children:[]});
+  const root=mk(rootKey,0); S.set(rootKey,root);
+  const q=[root];
+  for(let qi=0;qi<q.length;qi++){
+    const s=q[qi];
+    const wl=winLine(s.key);
+    if(wl){s.win=s.key[wl[0]];continue;}
+    if(s.depth===9){s.win='D';continue;}
+    const mark=s.depth%2===0?'X':'O';
+    const seen=new Map();
+    for(let i=0;i<9;i++){
+      if(s.key[i]!=='.')continue;
+      const ck=norm(s.key.slice(0,i)+mark+s.key.slice(i+1));
+      const prev=seen.get(ck);
+      if(prev){prev.mult++;continue;}
+      let c=S.get(ck), isNew=false;
+      if(!c){c=mk(ck,s.depth+1);S.set(ck,c);q.push(c);isNew=true;}
+      const e={to:c,cell:i,mult:1,tree:isNew};
+      seen.set(ck,e); s.children.push(e);
+    }
+  }
+  let edges=0,term={X:0,O:0,D:0};
+  for(let i=q.length-1;i>=0;i--){
+    const s=q[i];
+    edges+=s.children.length;
+    if(s.win){
+      term[s.win]++;
+      s.games=1;s.xw=s.win==='X'?1:0;s.ow=s.win==='O'?1:0;s.dw=s.win==='D'?1:0;
+      s.minEnd=0;s.minWho=s.win;
+      s.val=s.win==='X'?1:(s.win==='O'?-1:0);s.md=0;continue;
+    }
+    s.games=0;s.xw=0;s.ow=0;s.dw=0;s.minEnd=Infinity;s.minWho='D';
+    /* minimax: game value from X's perspective, and plies to the end under
+       optimal play (fastest win, longest resistance when losing/drawing) */
+    const turn=s.depth%2===0?'X':'O';
+    let bv=null,bm=0;
+    for(const e of s.children){
+      s.games+=e.mult*e.to.games;s.xw+=e.mult*e.to.xw;s.ow+=e.mult*e.to.ow;s.dw+=e.mult*e.to.dw;
+      const cost=1+e.to.minEnd;
+      if(cost<s.minEnd||(cost===s.minEnd&&s.minWho==='D'&&e.to.minWho!=='D')){s.minEnd=cost;s.minWho=e.to.minWho;}
+      const v=e.to.val,m=e.to.md;
+      if(bv===null||(turn==='X'?v>bv:v<bv)){bv=v;bm=m;}
+      else if(v===bv){
+        const winning=(turn==='X'&&v===1)||(turn==='O'&&v===-1);
+        if(winning?m<bm:m>bm)bm=m;
+      }
+    }
+    s.val=bv;s.md=bm+1;
+  }
+  return {S,root,q,edges,term,foldSym};
+}
+
+/* ================= layout (radial spanning tree from focus) ================= */
+const R_MAX=1000, RING_RATIO=0.76, TAU=Math.PI*2;
+function computeLayout(F){
+  const info=new Map(), order=[], redundant=[];
+  const rootI={n:F,par:null,pedge:null,kids:[],pin:[],d:0,ang:Math.PI/2,x:0,y:0};
+  info.set(F.key,rootI); order.push(rootI);
+  for(let i=0;i<order.length;i++){
+    const cur=order[i];
+    for(const e of cur.n.children){
+      let ci=info.get(e.to.key);
+      if(!ci){
+        ci={n:e.to,par:cur,pedge:e,kids:[],pin:[],d:cur.d+1,ang:0,x:0,y:0};
+        info.set(e.to.key,ci); order.push(ci); cur.kids.push(ci);
+      } else redundant.push([cur,ci]);
+      ci.pin.push(cur);
+    }
+  }
+  let maxD=0; for(const o of order) if(o.d>maxD)maxD=o.d;
+  const cum=[0]; let step=1,tot=0;
+  for(let d=1;d<=maxD;d++){tot+=step;cum.push(tot);step*=RING_RATIO;}
+  const sc=maxD?R_MAX/cum[maxD]:1;
+  for(let d=0;d<=maxD;d++)cum[d]*=sc;
+  /* dahlia placement: every ring of same-move positions is spaced evenly
+     around its circle, ordered by the mean direction of its parents,
+     alternate rings offset half a slot */
+  const rings=[]; for(let d=0;d<=maxD;d++)rings.push([]);
+  for(const o of order) rings[o.d].push(o);
+  for(let d=1;d<=maxD;d++){
+    const ring=rings[d];
+    if(d===1){
+      ring.sort((a,b)=>a.pedge.cell-b.pedge.cell);
+    }else{
+      for(const o of ring){
+        let sx=0,sy=0;
+        for(const p of o.pin){sx+=Math.cos(p.ang);sy+=Math.sin(p.ang);}
+        o._m=Math.atan2(sy,sx);
+      }
+      ring.sort((a,b)=>(a._m-b._m)||(a.n.key<b.n.key?-1:1));
+    }
+    const N=ring.length, off=(d%2)*0.5, base=d===1?-Math.PI/2:-Math.PI;
+    for(let i=0;i<N;i++){
+      const o=ring[i];
+      o.ang=base+TAU*(i+off)/N;
+      o.x=Math.cos(o.ang)*cum[d]; o.y=Math.sin(o.ang)*cum[d];
+    }
+  }
+  /* petal size adapts to how crowded its ring is, so the rim stays lace, not ribbon */
+  const foldF=fold?1.5:1;
+  const ringR=[15*foldF];
+  for(let d=1;d<=maxD;d++){
+    const base=(2.0+13*Math.pow(0.68,d))*foldF;
+    const slot=TAU*cum[d]/rings[d].length;
+    ringR.push(Math.min(base,slot*0.42));
+  }
+  const ringN=rings.map(r=>r.length);
+  return {info,order,redundant,maxD,cum,ringR,ringN};
+}
+
+/* ================= colors ================= */
+/* Color logic: one analogous span of cool pastels for the two players —
+   periwinkle (X) and rose (O) sitting either side of lilac, so where their
+   strokes blend additively they literally produce the transposition lilac.
+   One warm complementary accent (gold) is reserved for meaning: the core,
+   the golden vine, the fastest-win rays, and X endings. Blossoms melt from
+   apricot cream to coral rose, bridging the warm accent into the cool span. */
+const COL={X:[141,162,255],O:[255,138,196],web:[190,150,255],gold:[255,209,120],
+           haloX:[255,206,110],haloO:[255,138,180],haloD:[176,166,216]};
+const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+function nodeColor(gd){
+  const t=Math.min(gd/9,1),A=[255,222,178],B=[255,120,150];
+  return [A[0]+(B[0]-A[0])*t|0,A[1]+(B[1]-A[1])*t|0,A[2]+(B[2]-A[2])*t|0];
+}
+
+/* ================= state ================= */
+let G=buildGraph(false);
+let fold=false, showWeb=true;
+let focus=G.root, trail=[];      // trail: [{key,cell}]
+let LY=null, scene=null, grid=null, gridCell=14;
+let hover=null, cellEdgeHL=null, dirty=true;
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const bg=document.getElementById('bg'), bctx=bg.getContext('2d');
+const stage=document.getElementById('stage'), tip=document.getElementById('tip');
+let dpr=1, S_base=1;
+const view={scale:1, ox:0, oy:0};
+const REDUCED=(typeof matchMedia==='function')&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+let rot=0, stars=[], bgDrawn=false;
+
+/* ---------- night sky ---------- */
+function makeStars(){
+  stars=[];
+  const n=Math.min(380,Math.round(bg.width*bg.height/16000));
+  for(let i=0;i<n;i++){
+    const u=Math.random();
+    stars.push({
+      x:Math.random()*bg.width, y:Math.random()*bg.height,
+      r:(0.5+Math.random()*1.3)*dpr,
+      base:0.25+Math.random()*0.55,
+      sp:0.4+Math.random()*1.6, ph:Math.random()*TAU,
+      col:u<0.78?'232,236,255':(u<0.9?'255,214,150':'205,170,255'),
+    });
+  }
+}
+/* hidden nuggets: Pisces, the Little Dipper (Polaris sparkling at the tail),
+   and the Pleiades — Subaru's six stars. They breathe in and out of view. */
+const CONSTELLATIONS=[
+  {ox:0.30,oy:0.05,s:0.13,ph:0,polaris:0,
+   pts:[[0.02,0.02],[0.20,0.16],[0.36,0.30],[0.50,0.44],[0.70,0.38],[0.76,0.56],[0.54,0.60]],
+   lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]]},
+  {ox:0.05,oy:0.52,s:0.24,ph:2.1,polaris:-1,
+   pts:[[0.06,0.70],[0.13,0.62],[0.22,0.64],[0.24,0.73],[0.14,0.78],[0.42,0.80],[0.62,0.86],[0.80,0.90],[0.74,0.60],[0.70,0.34],[0.60,0.18],[0.76,0.14]],
+   lines:[[0,1],[1,2],[2,3],[3,4],[4,0],[3,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,9]]},
+  {ox:0.82,oy:0.70,s:0.055,ph:4.2,polaris:-1,cool:true,
+   pts:[[0,0.10],[0.30,0],[0.62,0.14],[0.24,0.42],[0.55,0.48],[0.88,0.36]],
+   lines:[]},
+  {ox:0.64,oy:0.16,s:0.06,ph:5.3,polaris:-1,rose:true, /* a small heart among the stars */
+   pts:[[0.50,0.18],[0.72,0.02],[0.95,0.12],[1.0,0.38],[0.50,0.95],[0,0.38],[0.05,0.12],[0.28,0.02]],
+   lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,0]]},
+];
+function drawConstellations(c,t,pox,poy){
+  const w=bg.width,h=bg.height,m=Math.min(w,h);
+  for(const K of CONSTELLATIONS){
+    const vis=REDUCED?0.6:0.35+0.65*(0.5+0.5*Math.sin(t*0.045+K.ph));
+    const P=K.pts.map(p=>[K.ox*w+p[0]*K.s*m+pox, K.oy*h+p[1]*K.s*m+poy]);
+    if(K.lines.length){
+      c.strokeStyle='rgba('+(K.rose?'255,180,205':'210,200,255')+','+(0.028+0.05*vis).toFixed(3)+')';
+      c.lineWidth=0.8*dpr; c.beginPath();
+      for(const [a,b] of K.lines){c.moveTo(P[a][0],P[a][1]);c.lineTo(P[b][0],P[b][1]);}
+      c.stroke();
+    }
+    P.forEach((p,i)=>{
+      const tw=REDUCED?1:0.75+0.25*Math.sin(t*1.3+i*1.7+K.ph);
+      const isPol=K.polaris===i;
+      const col=K.cool?'205,225,255':(K.rose?'255,196,214':'235,230,255');
+      c.fillStyle='rgba('+col+','+((isPol?0.85:0.30+0.30*vis)*tw).toFixed(3)+')';
+      c.beginPath();c.arc(p[0],p[1],(isPol?1.9:1.15)*dpr,0,TAU);c.fill();
+      if(isPol){
+        c.strokeStyle='rgba(235,230,255,'+(0.2+0.35*tw).toFixed(3)+')';
+        c.lineWidth=0.7*dpr;
+        const L=6*dpr;
+        c.beginPath();
+        c.moveTo(p[0]-L,p[1]);c.lineTo(p[0]+L,p[1]);
+        c.moveTo(p[0],p[1]-L);c.lineTo(p[0],p[1]+L);
+        c.stroke();
+      }
+    });
+  }
+}
+function neb(c,x,y,r,col,a){
+  const g=c.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,'rgba('+col+','+a+')'); g.addColorStop(1,'rgba('+col+',0)');
+  c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,TAU); c.fill();
+}
+/* sakura: a few soft petals drift down through the night */
+let sakura=[];
+function makeSakura(){
+  sakura=[];
+  for(let i=0;i<14;i++){
+    sakura.push({
+      x:Math.random()*bg.width, y0:Math.random()*bg.height,
+      s:(4.5+Math.random()*5)*dpr,
+      vy:(7+Math.random()*11)*dpr,
+      sway:(9+Math.random()*16)*dpr,
+      ph:Math.random()*TAU, rot0:Math.random()*TAU,
+      vr:(Math.random()<0.5?-1:1)*(0.15+Math.random()*0.4),
+      col:Math.random()<0.5?'255,196,215':'255,178,202',
+      a:0.10+Math.random()*0.08,
+    });
+  }
+}
+function drawSakura(c,t){
+  const wrap=bg.height+60;
+  for(const p of sakura){
+    const y=REDUCED?p.y0:((p.y0+t*p.vy)%wrap)-30;
+    const x=p.x+(REDUCED?0:Math.sin(t*0.45+p.ph)*p.sway);
+    const rot=p.rot0+(REDUCED?0:t*p.vr);
+    c.fillStyle='rgba('+p.col+','+p.a.toFixed(3)+')';
+    c.beginPath(); c.ellipse(x,y,p.s,p.s*0.62,rot,0,TAU); c.fill();
+    c.fillStyle='rgba(255,236,244,'+(p.a*0.5).toFixed(3)+')';
+    c.beginPath();
+    c.ellipse(x+Math.cos(rot)*p.s*0.35,y+Math.sin(rot)*p.s*0.35,p.s*0.4,p.s*0.25,rot,0,TAU);
+    c.fill();
+  }
+}
+function drawBG(t){
+  if(REDUCED&&bgDrawn)return;
+  const w=bg.width,h=bg.height,c=bctx,m=Math.min(w,h);
+  c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,w,h);
+  c.globalCompositeOperation='lighter';
+  const dr=REDUCED?0:1;
+  neb(c,w*(0.78+0.025*dr*Math.sin(t*0.021)),h*(0.14+0.025*dr*Math.cos(t*0.017)),m*0.58,'255,118,178',0.05);
+  neb(c,w*(0.12+0.025*dr*Math.sin(t*0.013+2)),h*(0.86+0.02*dr*Math.sin(t*0.019+1)),m*0.55,'92,222,214',0.045);
+  neb(c,w*(0.46+0.03*dr*Math.sin(t*0.009+4)),h*(0.42+0.03*dr*Math.cos(t*0.011)),m*0.7,'150,120,255',0.04);
+  const pox=(view.ox-cv.width*0.5)*0.06, poy=(view.oy-cv.height*0.5)*0.06;
+  for(const s of stars){
+    const a=REDUCED?s.base*0.8:s.base*(0.55+0.45*Math.sin(t*s.sp+s.ph));
+    c.fillStyle='rgba('+s.col+','+a.toFixed(3)+')';
+    c.fillRect(s.x+pox,s.y+poy,s.r,s.r);
+  }
+  drawConstellations(c,t,pox,poy);
+  drawSakura(c,t);
+  c.globalCompositeOperation='source-over';
+  const vg=c.createRadialGradient(w/2,h/2,m*0.38,w/2,h/2,Math.max(w,h)*0.74);
+  vg.addColorStop(0,'rgba(5,2,12,0)'); vg.addColorStop(1,'rgba(5,2,12,.42)');
+  c.fillStyle=vg; c.fillRect(0,0,w,h);
+  bgDrawn=true;
+}
+
+/* ================= scene (batched Path2D) ================= */
+const widthD=d=>(9*Math.pow(0.72,d)+0.6)*(fold?1.7:1);
+const alphaD=d=>fold?0.5*Math.pow(0.90,d)+0.10:0.40*Math.pow(0.86,d)+0.04;
+const nodeR=o=>LY.ringR[o.d];
+
+function angLerp(a,b,t){
+  let d=(b-a)%TAU;
+  if(d>Math.PI)d-=TAU; else if(d<-Math.PI)d+=TAU;
+  return a+d*t;
+}
+function edgeGeom(p,c){
+  const pa=p.par?p.ang:c.ang, na=c.ang;
+  const ca=angLerp(pa,na,0.58)+(p.d<2?0.10:0.06);
+  const cr=(LY.cum[p.d]+LY.cum[c.d])/2*0.98;
+  return {x1:p.x,y1:p.y,cx:Math.cos(ca)*cr,cy:Math.sin(ca)*cr,x2:c.x,y2:c.y};
+}
+/* closed petal silhouette: two mirrored arcs from p to c */
+function petalPath(path,p,c){
+  const dx=c.x-p.x, dy=c.y-p.y, len=Math.hypot(dx,dy)||1;
+  const nx=-dy/len, ny=dx/len;
+  const mx=(p.x+c.x)/2, my=(p.y+c.y)/2;
+  const slot=TAU*LY.cum[c.d]/LY.ringN[c.d];
+  const b=Math.min(len*0.20,slot*0.28);
+  path.moveTo(p.x,p.y);
+  path.quadraticCurveTo(mx+nx*b,my+ny*b,c.x,c.y);
+  path.quadraticCurveTo(mx-nx*b,my-ny*b,p.x,p.y);
+}
+
+function buildScene(){
+  const tree=new Map();
+  const web=new Path2D();
+  const halos={X:new Path2D(),O:new Path2D(),D:new Path2D()};
+  const nodes=new Map();
+  const rays=new Path2D();
+  const guides=new Path2D();
+  for(let d=1;d<=LY.maxD;d++){
+    guides.moveTo(LY.cum[d],0); guides.arc(0,0,LY.cum[d],0,TAU);
+  }
+  const petals={X:new Path2D(),O:new Path2D()};
+  for(const o of LY.order){
+    if(o.par){
+      const mark=o.par.n.depth%2===0?'X':'O';
+      if(o.d===1){ /* the handful of edges off the center: closed petal silhouettes */
+        petalPath(petals[mark],o.par,o);
+      }else{
+        const bucket=Math.min(o.pedge.mult,4);
+        const key=mark+o.par.d+':'+bucket;
+        let g=tree.get(key);
+        if(!g){g={path:new Path2D(),mark,d:o.par.d,bucket};tree.set(key,g);}
+        const e=edgeGeom(o.par,o);
+        g.path.moveTo(e.x1,e.y1); g.path.quadraticCurveTo(e.cx,e.cy,e.x2,e.y2);
+      }
+    }
+    const r=nodeR(o), gd=o.n.depth;
+    let np=nodes.get(gd);
+    if(!np){np=new Path2D();nodes.set(gd,np);}
+    if(!o.par){ /* center drawn separately as the golden lattice core */ }
+    else if(LY.ringN[o.d]<=14){ /* sparse ring: each blossom is a five-petal sakura rosette */
+      const rx=r*1.05, ry=r*0.42;
+      for(let k=0;k<5;k++){
+        const rot=o.ang+k*TAU/5;
+        np.moveTo(o.x+rx*Math.cos(rot),o.y+rx*Math.sin(rot));
+        np.ellipse(o.x,o.y,rx,ry,rot,0,TAU);
+      }
+    }else{ /* dense ring: single petal ellipse pointing outward */
+      const rx=r*1.45, ry=r*0.62;
+      np.moveTo(o.x+rx*Math.cos(o.ang),o.y+rx*Math.sin(o.ang));
+      np.ellipse(o.x,o.y,rx,ry,o.ang,0,TAU);
+    }
+    if(o.n.win){
+      const hr=r*2.8;
+      halos[o.n.win].moveTo(o.x+hr,o.y); halos[o.n.win].arc(o.x,o.y,hr,0,TAU);
+      if(o.d===focus.minEnd){
+        for(let k=0;k<4;k++){
+          const a=Math.PI/4+k*Math.PI/2, l=r*5;
+          rays.moveTo(o.x+Math.cos(a)*r*1.6,o.y+Math.sin(a)*r*1.6);
+          rays.lineTo(o.x+Math.cos(a)*l,o.y+Math.sin(a)*l);
+        }
+      }
+    }
+  }
+  for(const [p,c] of LY.redundant){
+    const mx=(p.x+c.x)/2*0.55, my=(p.y+c.y)/2*0.55;
+    web.moveTo(p.x,p.y); web.quadraticCurveTo(mx,my,c.x,c.y);
+  }
+  /* golden vine: follow fastest possible finish from the focus.
+     From the blank board every opening is equally fast, so the vine
+     only blooms once the first move has broken the symmetry. */
+  const gold=[];
+  let cur=focus.depth>0?LY.info.get(focus.key):null;
+  while(cur&&!cur.n.win){
+    let best=null,bc=Infinity,bWho='D',bTree=false;
+    for(const e of cur.n.children){
+      const ci=LY.info.get(e.to.key); if(!ci)continue;
+      const cost=1+e.to.minEnd, who=e.to.minWho, isTree=(ci.par===cur);
+      const wins= cost<bc || (cost===bc&&((bWho==='D'&&who!=='D')||(bWho!=='D'&&who!=='D'&&!bTree&&isTree)||(bWho==='D'&&who==='D'&&!bTree&&isTree)));
+      if(wins){best=ci;bc=cost;bWho=who;bTree=isTree;}
+    }
+    if(!best)break;
+    gold.push({g:edgeGeom(cur,best),d:cur.d});
+    cur=best;
+  }
+  /* golden lattice core: the empty grid as the flower's pistil */
+  const r0=LY.ringR[0], h=r0*1.05, t=h/3;
+  const lattice=new Path2D();
+  lattice.moveTo(-t,-h); lattice.lineTo(-t,h);
+  lattice.moveTo(t,-h);  lattice.lineTo(t,h);
+  lattice.moveTo(-h,-t); lattice.lineTo(h,-t);
+  lattice.moveTo(-h,t);  lattice.lineTo(h,t);
+  const coreGlow=new Path2D();
+  coreGlow.moveTo(r0*2.6,0); coreGlow.arc(0,0,r0*2.6,0,TAU);
+  const heartGlow=new Path2D();
+  const hr=LY.maxD>=1?LY.cum[1]*0.55:r0*3;
+  heartGlow.moveTo(hr,0); heartGlow.arc(0,0,hr,0,TAU);
+  scene={tree:[...tree.values()].sort((a,b)=>b.d-a.d),web,halos,nodes:[...nodes.entries()],rays,gold,guides,petals,lattice,coreGlow,heartGlow};
+}
+
+function buildGrid(){
+  grid=new Map();
+  for(let i=0;i<LY.order.length;i++){
+    const o=LY.order[i];
+    const k=Math.floor(o.x/gridCell)+','+Math.floor(o.y/gridCell);
+    let a=grid.get(k); if(!a){a=[];grid.set(k,a);}
+    a.push(o);
+  }
+}
+function pick(wx,wy){
+  const S=S_base*view.scale;
+  const rad=Math.max(4,12*dpr/S);
+  const g0x=Math.floor((wx-rad)/gridCell), g1x=Math.floor((wx+rad)/gridCell);
+  const g0y=Math.floor((wy-rad)/gridCell), g1y=Math.floor((wy+rad)/gridCell);
+  let best=null,bd=Infinity;
+  for(let gx=g0x;gx<=g1x;gx++)for(let gy=g0y;gy<=g1y;gy++){
+    const a=grid.get(gx+','+gy); if(!a)continue;
+    for(const o of a){
+      const d=Math.hypot(o.x-wx,o.y-wy);
+      if(d<bd&&d<Math.max(rad,nodeR(o)+2)){bd=d;best=o;}
+    }
+  }
+  return best;
+}
+
+/* ================= draw ================= */
+function strokeSeg(g,style,w){
+  ctx.strokeStyle=style; ctx.lineWidth=w;
+  ctx.beginPath(); ctx.moveTo(g.x1,g.y1); ctx.quadraticCurveTo(g.cx,g.cy,g.x2,g.y2); ctx.stroke();
+}
+function goldMix(f){ /* deep amber -> pale champagne along the vine */
+  const A=[255,164,64], B=[255,238,190];
+  return [A[0]+(B[0]-A[0])*f|0, A[1]+(B[1]-A[1])*f|0, A[2]+(B[2]-A[2])*f|0];
+}
+function draw(t){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const S=S_base*view.scale, cR=Math.cos(rot), sR=Math.sin(rot);
+  ctx.setTransform(S*cR,S*sR,-S*sR,S*cR,view.ox,view.oy);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.globalCompositeOperation='lighter';
+  const sh=REDUCED?()=>1:(d=>0.84+0.16*Math.sin(t*1.1-d*0.6)); /* shimmer ripples outward */
+  ctx.strokeStyle='rgba(255,255,255,'+(fold?0.05:0.03)+')';
+  ctx.lineWidth=1;
+  ctx.stroke(scene.guides);
+  /* luminous ring beds between petal rows give the mandala body */
+  for(let d=1;d<=LY.maxD;d++){
+    const gap=LY.cum[d]-LY.cum[d-1];
+    ctx.strokeStyle=rgba(nodeColor(Math.min(9,d+focus.depth)),(fold?0.035:0.02)*sh(d));
+    ctx.lineWidth=gap*0.8;
+    ctx.beginPath(); ctx.arc(0,0,Math.max(1,LY.cum[d]-gap*0.4),0,TAU); ctx.stroke();
+  }
+  ctx.fillStyle=rgba(COL.gold,0.045*sh(0)); ctx.fill(scene.heartGlow);
+  if(showWeb){
+    ctx.strokeStyle=rgba(COL.web,fold?0.12:0.045);
+    ctx.lineWidth=fold?2.4:1.15;
+    ctx.stroke(scene.web);
+  }
+  for(const m of ['X','O']){
+    ctx.fillStyle=rgba(COL[m],0.09*sh(0.5)); ctx.fill(scene.petals[m]);
+    ctx.strokeStyle=rgba(COL[m],0.07*sh(0.5));
+    ctx.lineWidth=widthD(0)*1.1;
+    ctx.stroke(scene.petals[m]);
+    ctx.strokeStyle=rgba(COL[m],(alphaD(0)+0.18)*sh(0.5));
+    ctx.lineWidth=widthD(0)*0.35+1;
+    ctx.stroke(scene.petals[m]);
+  }
+  /* soft halo underlayer on the inner stems: layered-glass depth */
+  for(const g of scene.tree){
+    if(g.d>3)continue;
+    ctx.strokeStyle=rgba(g.mark==='X'?COL.X:COL.O,alphaD(g.d)*0.22*sh(g.d));
+    ctx.lineWidth=widthD(g.d)*2.8;
+    ctx.stroke(g.path);
+  }
+  for(const g of scene.tree){
+    ctx.strokeStyle=rgba(g.mark==='X'?COL.X:COL.O,alphaD(g.d)*sh(g.d));
+    ctx.lineWidth=widthD(g.d)*(0.7+0.3*Math.sqrt(g.bucket));
+    ctx.stroke(g.path);
+  }
+  for(const k of ['X','O','D']){ctx.fillStyle=rgba(COL['halo'+k],0.16*sh(6));ctx.fill(scene.halos[k]);}
+  for(const [gd,path] of scene.nodes){
+    ctx.fillStyle=rgba(nodeColor(gd),Math.max(0.4,0.92-0.06*gd)*sh(gd-focus.depth));
+    ctx.fill(path);
+  }
+  /* golden vine: nothing travels — the path ramps from deep amber at your
+     position to pale champagne at the win, breathing gently as one */
+  const nG=scene.gold.length;
+  const vBr=REDUCED?1:0.88+0.12*Math.sin(t*0.9);
+  scene.gold.forEach((s,i)=>{
+    const w0=widthD(s.d)*0.9+1.4;
+    strokeSeg(s.g,rgba(goldMix(i/nG),0.14*vBr),w0*3.4);
+    const gr=ctx.createLinearGradient(s.g.x1,s.g.y1,s.g.x2,s.g.y2);
+    gr.addColorStop(0,rgba(goldMix(i/nG),0.9*vBr));
+    gr.addColorStop(1,rgba(goldMix((i+1)/nG),0.9*vBr));
+    strokeSeg(s.g,gr,w0);
+  });
+  if(nG){ /* the destination glows brightest */
+    const end=scene.gold[nG-1], w0=widthD(end.d)*0.9+1.4;
+    const eBr=REDUCED?1:0.8+0.2*Math.sin(t*0.9+0.6);
+    ctx.fillStyle=rgba([255,238,190],0.10*eBr);
+    ctx.beginPath();ctx.arc(end.g.x2,end.g.y2,w0*5.5,0,TAU);ctx.fill();
+    ctx.fillStyle=rgba([255,242,205],0.35*eBr);
+    ctx.beginPath();ctx.arc(end.g.x2,end.g.y2,w0*2,0,TAU);ctx.fill();
+  }
+  ctx.strokeStyle=rgba(COL.gold,0.55*sh(focus.minEnd||0)); ctx.lineWidth=1.3; ctx.stroke(scene.rays);
+  ctx.fillStyle=rgba(COL.gold,0.14*sh(0)); ctx.fill(scene.coreGlow);
+  ctx.strokeStyle=rgba(COL.gold,0.95); ctx.lineWidth=2.3; ctx.stroke(scene.lattice);
+  /* interactive highlights */
+  if(cellEdgeHL) strokeSeg(cellEdgeHL,'rgba(255,255,255,.85)',widthD(0)*0.9+1.6);
+  if(hover){
+    let cur=hover;
+    while(cur.par){
+      strokeSeg(edgeGeom(cur.par,cur),'rgba(255,246,230,.8)',widthD(cur.par.d)*0.9+0.8);
+      cur=cur.par;
+    }
+    ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=Math.max(1.5,2.5/view.scale);
+    ctx.beginPath(); ctx.arc(hover.x,hover.y,nodeR(hover)+3.5/view.scale,0,TAU); ctx.stroke();
+  }
+  /* a little love at the heart of the garden — upright, whatever the mandala does */
+  ctx.setTransform(S,0,0,S,view.ox,view.oy);
+  ctx.globalCompositeOperation='lighter';
+  const hs=LY.ringR[0]*0.52*(REDUCED?1:1+0.06*Math.sin(t*1.3));
+  ctx.fillStyle=rgba([255,150,182],0.20);
+  ctx.beginPath(); ctx.arc(0,0.6,hs*1.35,0,TAU); ctx.fill();
+  ctx.fillStyle=rgba([255,158,188],0.95);
+  ctx.beginPath();
+  ctx.moveTo(0,hs*0.35);
+  ctx.bezierCurveTo(-hs*0.55,-hs*0.05,-hs*0.35,-hs*0.45,0,-hs*0.12);
+  ctx.bezierCurveTo(hs*0.35,-hs*0.45,hs*0.55,-hs*0.05,0,hs*0.35);
+  ctx.fill();
+}
+let lastNow=(typeof performance!=='undefined')?performance.now():0, frameN=0;
+function frame(now){
+  const dt=Math.min(0.1,(now-lastNow)/1000)||0; lastNow=now; frameN++;
+  const t=now/1000;
+  drawBG(t);
+  if(recAnim){
+    const u=Math.min(1,(now-recAnim.t0)/520);
+    const e=u<0.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+    view.ox=recAnim.x0+(cv.width*0.5-recAnim.x0)*e;
+    view.oy=recAnim.y0+(cv.height*0.5-recAnim.y0)*e;
+    view.scale=recAnim.s0+(1-recAnim.s0)*e;
+    dirty=true;
+    if(u>=1)recAnim=null;
+  }
+  if(auto.on&&scene&&t>=auto.next)autoStep(t);
+  if(bot!=='off'&&scene&&!focus.win&&!auto.on){
+    const turn=focus.depth%2===0?'X':'O';
+    if(turn===bot){
+      if(botNext===null)botNext=t+0.85;
+      else if(t>=botNext){botNext=null;botMove();}
+    } else botNext=null;
+  } else botNext=null;
+  /* the mandala turns, very slowly — and stills when you reach in */
+  const spinning=!REDUCED&&scene&&!hover&&!dragging&&view.scale<2.2;
+  if(spinning){
+    rot=(rot+dt*0.016)%TAU;
+    if(fold||frameN%2===0)dirty=true; /* full graph redraws at half rate */
+  }
+  if(dirty&&scene){dirty=false;draw(t);}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ================= panel ================= */
+const $=id=>document.getElementById(id);
+const SUB='₀₁₂₃₄₅₆₇₈₉';
+const fmt=n=>n.toLocaleString('en-US');
+const cellName=i=>'abc'[Math.floor(i/3)]+(i%3+1);
+const glyph=m=>m==='X'?'<b class="mx">X</b>':'<b class="mo">O</b>';
+
+function miniBoardHTML(key){
+  const wl=winLine(key)||[];
+  let h='<div class="mini">';
+  for(let i=0;i<9;i++){
+    const c=key[i];
+    h+='<div'+(wl.includes(i)?' style="background:rgba(255,214,138,.22)"':'')+'>'+
+       (c==='.'?'':'<span class="'+(c==='X'?'mx':'mo')+'">'+c+'</span>')+'</div>';
+  }
+  return h+'</div>';
+}
+
+function renderBoard(){
+  const b=$('board'); b.innerHTML='';
+  const wl=winLine(focus.key)||[];
+  const mark=focus.depth%2===0?'X':'O';
+  for(let i=0;i<9;i++){
+    const c=focus.key[i];
+    const div=document.createElement('div');
+    div.className='cell';
+    if(c!=='.'){div.textContent=c; div.classList.add(c==='X'?'mx':'mo');}
+    else if(!focus.win&&!(bot!=='off'&&mark===bot)){
+      div.classList.add('open'); div.dataset.ghost=mark;
+      div.classList.add(mark==='X'?'mx':'mo');
+      div.addEventListener('mouseenter',()=>{
+        const e=childEdgeForCell(i);
+        cellEdgeHL=e?edgeGeom(LY.info.get(focus.key),LY.info.get(e.to.key)):null;
+        dirty=true;
+      });
+      div.addEventListener('mouseleave',()=>{cellEdgeHL=null;dirty=true;});
+      div.addEventListener('click',()=>{
+        const e=childEdgeForCell(i);
+        if(e){stopAuto();trail.push({key:e.to.key,cell:i}); setFocus(e.to);}
+      });
+    }
+    if(wl.includes(i))div.classList.add('winline');
+    b.appendChild(div);
+  }
+  const t=$('turnline'), ban=$('banner');
+  if(focus.win){
+    t.textContent='S'+SUB[focus.depth]+' · game over after move '+focus.depth;
+    ban.style.display='block';
+    ban.innerHTML=focus.win==='D'?'It’s a draw \u{1F338}':glyph(focus.win)+' wins! \u{1F31F}';
+  }else{
+    t.innerHTML='S'+SUB[focus.depth]+' · move '+(focus.depth+1)+' · '+glyph(mark)+' to play'+
+      (bot===mark?' · &#129302; thinking&hellip;':'');
+    ban.style.display='none';
+  }
+}
+
+function childEdgeForCell(i){
+  if(focus.win||focus.key[i]!=='.')return null;
+  const mark=focus.depth%2===0?'X':'O';
+  const ck=(fold?canon:(s)=>s)(focus.key.slice(0,i)+mark+focus.key.slice(i+1));
+  return focus.children.find(e=>e.to.key===ck)||null;
+}
+
+function renderTrail(){
+  const t=$('trail'); t.innerHTML='';
+  const home=document.createElement('button');
+  home.className='chip'; home.textContent='S₀';
+  home.addEventListener('click',()=>{stopAuto();goHome();});
+  t.appendChild(home);
+  trail.forEach((step,idx)=>{
+    const c=document.createElement('button');
+    c.className='chip';
+    const mark=idx%2===0?'X':'O';
+    c.innerHTML=(idx+1)+'. '+glyph(mark)+'&nbsp;'+cellName(step.cell);
+    c.addEventListener('click',()=>{
+      stopAuto();
+      trail=trail.slice(0,idx+1);
+      setFocus(G.S.get(trail[idx].key));
+    });
+    t.appendChild(c);
+  });
+}
+
+function renderStats(){
+  const s=$('stats');
+  if(focus.win){
+    const who=focus.win==='D'?'a draw':(focus.win==='X'?'a win for X':'a win for O');
+    s.innerHTML='<div class="statline">A finished garden: this branch ends in <b>'+who+'</b> after '+focus.depth+' moves.</div>';
+    return;
+  }
+  const g=focus.games, px=Math.round(100*focus.xw/g), po=Math.round(100*focus.ow/g), pd=Math.max(0,100-px-po);
+  const whoTxt=focus.minWho==='D'?'a draw':(focus.minWho==='X'?'X wins':'O wins');
+  const goldTxt=focus.depth===0
+    ?'every opening is equally fast (X can win by move 5) — play a move and the golden vine will bloom'
+    :'golden vine: fastest possible finish is <b>'+whoTxt+' in '+focus.minEnd+' more move'+(focus.minEnd===1?'':'s')+'</b>';
+  s.innerHTML=
+    '<div class="statline">From here the game can finish <b>'+fmt(g)+'</b> ways:</div>'+
+    '<div id="bar"><div id="barX" style="width:'+px+'%"></div><div id="barO" style="width:'+po+'%"></div><div id="barD" style="width:'+pd+'%"></div></div>'+
+    '<div id="barcap">'+glyph('X')+' '+fmt(focus.xw)+' ('+px+'%) · '+glyph('O')+' '+fmt(focus.ow)+' ('+po+'%) · draws '+fmt(focus.dw)+' ('+pd+'%)</div>'+
+    '<div class="goldline">✨ '+goldTxt+'</div>';
+}
+
+function renderGlobal(){
+  const t=G.term;
+  $('global').textContent=fmt(G.S.size)+' positions · '+fmt(G.edges)+' moves · '+
+    fmt(G.root.games)+' complete games · '+fmt(t.X+t.O+t.D)+' endings ('+
+    fmt(t.X)+' X · '+fmt(t.O)+' O · '+fmt(t.D)+' draws)';
+}
+
+function updatePanel(){
+  renderBoard(); renderTrail(); renderStats();
+  $('upBtn').disabled=trail.length===0;
+  $('homeBtn').disabled=trail.length===0;
+}
+
+/* ================= navigation ================= */
+function resetView(){
+  view.scale=1;
+  view.ox=cv.width*0.5; view.oy=cv.height*0.5;
+}
+/* the mandala never leaves the stage: its center stays within reach */
+function clampView(){
+  const lim=R_MAX*S_base*view.scale*1.08;
+  view.ox=Math.min(cv.width*0.5+lim,Math.max(cv.width*0.5-lim,view.ox));
+  view.oy=Math.min(cv.height*0.5+lim,Math.max(cv.height*0.5-lim,view.oy));
+}
+function setFocus(n){
+  focus=n; hover=null; cellEdgeHL=null; tip.hidden=true; recAnim=null;
+  LY=computeLayout(n); buildScene(); buildGrid(); resetView(); updatePanel();
+  try{ if(typeof history!=='undefined')history.replaceState(null,'','#'+trail.map(s=>s.cell).join('')); }catch(err){}
+  dirty=true;
+}
+function goHome(){ trail=[]; setFocus(G.root); }
+function goUp(){
+  if(!trail.length)return;
+  trail.pop();
+  setFocus(trail.length?G.S.get(trail[trail.length-1].key):G.root);
+}
+/* replay a move sequence (cells 0-8) from the empty board; works in fold mode too */
+function goToCells(cells){
+  trail=[]; let f=G.root, b='.........';
+  for(let i=0;i<cells.length;i++){
+    const c=cells[i];
+    if(b[c]!=='.')break;
+    b=b.slice(0,c)+(i%2===0?'X':'O')+b.slice(c+1);
+    const ck=fold?canon(b):b;
+    const e=f.children.find(e=>e.to.key===ck);
+    if(!e)break;
+    trail.push({key:ck,cell:e.cell}); f=e.to;
+  }
+  setFocus(f);
+}
+/* smooth glide back to a centered, unzoomed mandala */
+let recAnim=null;
+function recenter(){
+  if(REDUCED){resetView();dirty=true;return;}
+  recAnim={t0:lastNow,x0:view.ox,y0:view.oy,s0:view.scale};
+}
+/* guided tour */
+const TOUR=[
+  {cells:[],cap:'The whole garden — all 255,168 games bloom from the empty board.'},
+  {cells:[4],cap:'X plants the center, the busiest stem in the flower.'},
+  {cells:[4,0],cap:'O answers in a corner — the classic reply to a center opening.'},
+  {cells:[0,4,8],cap:'Two opposite corners around O’s center: the middle game tightens.'},
+  {cells:[0,3,1,4],cap:'One move from three-in-a-row — the vine is short and champagne-bright.'},
+  {cells:[0,3,1,4,2],cap:'A finished branch: X crosses the top row and the flower closes to a single blossom.'},
+];
+let tourIdx=-1;
+function tourGo(dir){
+  stopAuto();
+  tourIdx=(tourIdx+dir+TOUR.length)%TOUR.length;
+  const s=TOUR[tourIdx];
+  goToCells(s.cells);
+  $('tourN').textContent='tour · '+(tourIdx+1)+' / '+TOUR.length;
+  $('tourText').textContent=s.cap;
+}
+/* the bot: perfect play via the minimax values baked into the graph */
+let bot='off', botNext=null;
+function setBot(v){
+  bot=v; botNext=null;
+  for(const [k,id] of [['off','botOff'],['O','botO'],['X','botX']]){
+    if(k===v)$(id).classList.add('on'); else $(id).classList.remove('on');
+  }
+  renderBoard();
+}
+function botMove(){
+  if(focus.win||!focus.children.length)return;
+  const turn=focus.depth%2===0?'X':'O';
+  const want=turn==='X'?1:-1;
+  let cands=[],bestV=null,bestM=null;
+  for(const e of focus.children){
+    const v=e.to.val,m=e.to.md;
+    if(bestV===null){bestV=v;bestM=m;cands=[e];continue;}
+    const better=(turn==='X'?v>bestV:v<bestV)||
+      (v===bestV&&((v===want)?m<bestM:m>bestM));
+    if(better){bestV=v;bestM=m;cands=[e];}
+    else if(v===bestV&&m===bestM)cands.push(e);
+  }
+  const e=cands[Math.floor(Math.random()*cands.length)];
+  trail.push({key:e.to.key,cell:e.cell});
+  setFocus(e.to);
+}
+/* let it play: a random game unfolds petal by petal */
+const auto={on:false,next:0};
+function updatePlayBtn(){$('playBtn').innerHTML=auto.on?'&#9632; pause':'&#10047; let it play';}
+function stopAuto(){ if(auto.on){auto.on=false;updatePlayBtn();} }
+function autoStep(t){
+  if(focus.win){stopAuto();return;}
+  let tot=0; for(const e of focus.children)tot+=e.mult;
+  let r=Math.random()*tot, pick=focus.children[0];
+  for(const e of focus.children){ r-=e.mult; if(r<=0){pick=e;break;} }
+  trail.push({key:pick.to.key,cell:pick.cell});
+  setFocus(pick.to);
+  auto.next=t+1.15;
+  if(focus.win)stopAuto();
+}
+function setFold(v){
+  fold=v; G=buildGraph(v); trail=[];
+  renderGlobal(); setFocus(G.root);
+}
+
+/* ================= canvas events ================= */
+function resize(){
+  dpr=window.devicePixelRatio||1;
+  cv.width=bg.width=Math.max(1,Math.round(stage.clientWidth*dpr));
+  cv.height=bg.height=Math.max(1,Math.round(stage.clientHeight*dpr));
+  S_base=Math.min(cv.width,cv.height)*0.46/R_MAX;
+  makeStars(); makeSakura(); bgDrawn=false;
+  resetView(); dirty=true;
+}
+window.addEventListener('resize',resize);
+
+let dragging=false,panning=false,didPan=false,px0=0,py0=0,ox0=0,oy0=0,lastCss={x:0,y:0};
+cv.addEventListener('mousedown',e=>{
+  dragging=true; panning=false;
+  px0=e.offsetX*dpr; py0=e.offsetY*dpr; ox0=view.ox; oy0=view.oy;
+});
+window.addEventListener('mouseup',()=>{
+  dragging=false;
+  if(panning){panning=false; didPan=true; cv.classList.remove('grabbing');}
+});
+cv.addEventListener('click',e=>{
+  if(didPan){didPan=false;return;}
+  if(hover&&hover.par){
+    stopAuto();
+    const steps=[]; let cur=hover;
+    while(cur.par){steps.unshift({key:cur.n.key,cell:cur.pedge.cell});cur=cur.par;}
+    trail.push(...steps);
+    setFocus(hover.n);
+  }
+});
+cv.addEventListener('dblclick',()=>{ if(!hover)recenter(); });
+cv.addEventListener('mousemove',e=>{
+  lastCss={x:e.offsetX,y:e.offsetY};
+  const mx=e.offsetX*dpr,my=e.offsetY*dpr;
+  if(dragging){
+    if(Math.hypot(mx-px0,my-py0)>4*dpr){panning=true;cv.classList.add('grabbing');}
+    if(panning){
+      view.ox=ox0+(mx-px0); view.oy=oy0+(my-py0);
+      clampView(); dirty=true; return;
+    }
+  }
+  const S=S_base*view.scale, cR=Math.cos(rot), sR=Math.sin(rot);
+  const px=(mx-view.ox)/S, py=(my-view.oy)/S;
+  const h=pick(px*cR+py*sR, -px*sR+py*cR);
+  if(h!==hover){hover=h;updateTip();dirty=true;}
+  else if(h)positionTip();
+});
+cv.addEventListener('mouseleave',()=>{hover=null;tip.hidden=true;dirty=true;});
+cv.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const f=Math.exp(-e.deltaY*0.0016);
+  const ns=Math.min(22,Math.max(0.8,view.scale*f)), rf=ns/view.scale;
+  const mx=e.offsetX*dpr,my=e.offsetY*dpr;
+  view.ox=mx-(mx-view.ox)*rf; view.oy=my-(my-view.oy)*rf;
+  view.scale=ns; clampView(); dirty=true;
+},{passive:false});
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){stopAuto();goUp();}
+  else if(e.key==='c'||e.key==='C')recenter();
+  else if(e.key==='ArrowLeft')tourGo(-1);
+  else if(e.key==='ArrowRight')tourGo(1);
+});
+
+function updateTip(){
+  if(!hover){tip.hidden=true;return;}
+  const n=hover.n;
+  let l1;
+  if(n.win) l1=(n.win==='D'?'draw':glyph(n.win)+' wins')+' · move '+n.depth;
+  else l1='S'+SUB[n.depth]+' · move '+(n.depth+1)+' · '+glyph(n.depth%2===0?'X':'O')+' to play';
+  let l2='';
+  if(!n.win){
+    const px=Math.round(100*n.xw/n.games), po=Math.round(100*n.ow/n.games);
+    l2='<div class="tline"><b>'+fmt(n.games)+'</b> finishes · X '+px+'% · O '+po+'% · draw '+Math.max(0,100-px-po)+'%</div>'+
+       '<div class="tline">fastest end: '+(n.minWho==='D'?'draw':n.minWho+' wins')+' in '+n.minEnd+'</div>';
+  }
+  tip.innerHTML=miniBoardHTML(n.key)+'<div class="tline">'+l1+'</div>'+l2+
+    (hover.par?'<div class="cta">click to replant the flower here</div>':'');
+  tip.hidden=false;
+  positionTip();
+}
+function positionTip(){
+  const pad=16, w=tip.offsetWidth, hgt=tip.offsetHeight;
+  let x=lastCss.x+pad, y=lastCss.y+pad;
+  if(x+w>stage.clientWidth-8)x=lastCss.x-w-pad;
+  if(y+hgt>stage.clientHeight-8)y=lastCss.y-hgt-pad;
+  tip.style.left=Math.max(6,x)+'px'; tip.style.top=Math.max(6,y)+'px';
+}
+
+/* ================= wire up ================= */
+$('upBtn').addEventListener('click',()=>{stopAuto();goUp();});
+$('homeBtn').addEventListener('click',()=>{stopAuto();goHome();});
+$('playBtn').addEventListener('click',()=>{
+  if(auto.on){stopAuto();return;}
+  setBot('off');
+  if(focus.win)goHome();
+  auto.on=true; auto.next=0; updatePlayBtn();
+});
+$('botOff').addEventListener('click',()=>{stopAuto();setBot('off');});
+$('botO').addEventListener('click',()=>{stopAuto();setBot('O');});
+$('botX').addEventListener('click',()=>{stopAuto();setBot('X');});
+$('tourPrev').addEventListener('click',()=>tourGo(-1));
+$('tourNext').addEventListener('click',()=>tourGo(1));
+$('foldChk').addEventListener('change',e=>{stopAuto();setFold(e.target.checked);});
+$('webChk').addEventListener('change',e=>{showWeb=e.target.checked;dirty=true;});
+
+resize(); renderGlobal(); updatePlayBtn();
+let hash0='';
+try{ if(typeof location!=='undefined')hash0=(location.hash||'').slice(1); }catch(err){}
+if(/^[0-8]{1,9}$/.test(hash0)) goToCells(hash0.split('').map(Number));
+else setFocus(G.root);
+</script>
