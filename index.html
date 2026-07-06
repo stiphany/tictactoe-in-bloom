@@ -76,13 +76,14 @@
   #preview{min-height:17px; color:var(--faint); font-size:11.5px; text-align:center; font-variant-numeric:tabular-nums}
   #banner{display:none; text-align:center; font-weight:800; font-size:15px; margin-top:2px}
 
-  #trail{display:flex; flex-wrap:wrap; gap:5px; margin:14px 0 10px}
-  .chip{
-    font:inherit; font-size:11.5px; color:var(--ink); background:rgba(255,255,255,.07);
-    border:1px solid var(--line); border-radius:999px; padding:3px 9px; cursor:pointer;
-  }
-  .chip:hover{background:rgba(255,255,255,.15)}
-  .chip:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  #trail{display:flex; flex-wrap:wrap; align-items:center; row-gap:3px; margin:12px 0 10px; min-height:23px}
+  .tstep{font:inherit; font-size:12.5px; font-weight:600; color:var(--muted);
+    background:none; border:none; border-radius:8px; padding:2px 6px; cursor:pointer}
+  .tstep.mx{color:var(--x)} .tstep.mo{color:var(--o)}
+  .tstep:hover{background:rgba(255,255,255,.12)}
+  .tstep.cur{font-weight:800; text-shadow:0 0 14px currentColor}
+  .tsep{color:var(--faint); font-size:10px}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
 
   .btns{display:flex; gap:7px; margin:4px 0 14px}
   .btns button{
@@ -959,21 +960,23 @@ function childEdgeForCell(i){
 
 function renderTrail(){
   const t=$('trail'); t.innerHTML='';
-  const home=document.createElement('button');
-  home.className='chip'; home.textContent='S₀';
-  home.addEventListener('click',()=>{humanInterrupt();goHome();});
-  t.appendChild(home);
-  trail.forEach((step,idx)=>{
-    const c=document.createElement('button');
-    c.className='chip';
+  const step=(label,cls,title,cur,go)=>{
+    const b=document.createElement('button');
+    b.className='tstep'+(cls?' '+cls:'')+(cur?' cur':'');
+    b.textContent=label; b.title=title;
+    b.addEventListener('click',go);
+    t.appendChild(b);
+  };
+  step('S₀','','the empty board',trail.length===0,()=>{humanInterrupt();goHome();});
+  trail.forEach((s,idx)=>{
+    const sep=document.createElement('span');
+    sep.className='tsep'; sep.textContent='›';
+    t.appendChild(sep);
     const mark=idx%2===0?'X':'O';
-    c.innerHTML=(idx+1)+'. '+glyph(mark)+'&nbsp;'+cellName(step.cell);
-    c.addEventListener('click',()=>{
-      humanInterrupt();
-      trail=trail.slice(0,idx+1);
-      setFocus(G.S.get(trail[idx].key));
-    });
-    t.appendChild(c);
+    step(cellName(s.cell),mark==='X'?'mx':'mo',
+      'move '+(idx+1)+': '+mark+' at '+cellName(s.cell),
+      idx===trail.length-1,
+      ()=>{humanInterrupt();trail=trail.slice(0,idx+1);setFocus(G.S.get(trail[idx].key));});
   });
 }
 
